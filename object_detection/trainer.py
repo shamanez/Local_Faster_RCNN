@@ -30,7 +30,7 @@ from object_detection.core import preprocessor
 from object_detection.core import standard_fields as fields
 from object_detection.utils import ops as util_ops
 from object_detection.utils import variables_helper
-from deployment import model_deploy
+from deployment import model_deploy   #in the slim 
 
 slim = tf.contrib.slim
 
@@ -41,7 +41,7 @@ def _create_input_queue(batch_size_per_clone, create_tensor_dict_fn,
   """Sets up reader, prefetcher and returns input queue.
 
   Args:
-    batch_size_per_clone: batch size to use per clone.
+    batch_size_per_clone: batch size to use per clone.                 #how to set up clones ????????????
     create_tensor_dict_fn: function to create tensor dictionary.
     batch_queue_capacity: maximum number of elements to store within a queue.
     num_batch_queue_threads: number of threads to use for batching.
@@ -58,15 +58,15 @@ def _create_input_queue(batch_size_per_clone, create_tensor_dict_fn,
   """
   tensor_dict = create_tensor_dict_fn()
 
-  tensor_dict[fields.InputDataFields.image] = tf.expand_dims(
+  tensor_dict[fields.InputDataFields.image] = tf.expand_dims(  #expand images daata , acrually etract data 
       tensor_dict[fields.InputDataFields.image], 0)
 
   images = tensor_dict[fields.InputDataFields.image]
-  float_images = tf.to_float(images)
-  tensor_dict[fields.InputDataFields.image] = float_images
+  float_images = tf.to_float(images)                         #not much turning the image data in to fload
+  tensor_dict[fields.InputDataFields.image] = float_images  #put that in to tensor dict
 
-  if data_augmentation_options:
-    tensor_dict = preprocessor.preprocess(tensor_dict,
+  if data_augmentation_options:   #here we will pre process 
+    tensor_dict = preprocessor.preprocess(tensor_dict,     #return   tensor_dict: which contains the preprocessed images, bounding boxes, etc.
                                           data_augmentation_options)
 
   input_queue = batcher.BatchQueue(
@@ -96,7 +96,7 @@ def _get_inputs(input_queue, num_classes):
   """
   read_data_list = input_queue.dequeue()
   label_id_offset = 1
-  def extract_images_and_targets(read_data):
+  def extract_images_and_targets(read_data):     #extractiing all the informations 
     image = read_data[fields.InputDataFields.image]
     location_gt = read_data[fields.InputDataFields.groundtruth_boxes]
     classes_gt = tf.cast(read_data[fields.InputDataFields.groundtruth_classes],
@@ -106,7 +106,7 @@ def _get_inputs(input_queue, num_classes):
                                                   depth=num_classes, left_pad=0)
     masks_gt = read_data.get(fields.InputDataFields.groundtruth_instance_masks)
     return image, location_gt, classes_gt, masks_gt
-  return zip(*map(extract_images_and_targets, read_data_list))
+  return zip(*map(extract_images_and_targets, read_data_list)) #
 
 
 def _create_losses(input_queue, create_model_fn):
@@ -119,20 +119,30 @@ def _create_losses(input_queue, create_model_fn):
   detection_model = create_model_fn()
   (images, groundtruth_boxes_list, groundtruth_classes_list,
    groundtruth_masks_list
-  ) = _get_inputs(input_queue, detection_model.num_classes)
-  images = [detection_model.preprocess(image) for image in images]
-  images = tf.concat(images, 0)
-  if any(mask is None for mask in groundtruth_masks_list):
+  ) = _get_inputs(input_queue, detection_model.num_classes)    #pure inputs from the 
+  images = [detection_model.preprocess(image) for image in images]  #preprocess images in to given aspect ratio and zero cenerd with mean pixel
+  images = tf.concat(images, 0)  #concatanation of images 
+  if any(mask is None for mask in groundtruth_masks_list):  #detection model comes from faster_rcnn_meta_arch.py in FasterRCNNMetaArch class
     groundtruth_masks_list = None
 
-  detection_model.provide_groundtruth(groundtruth_boxes_list,
+  detection_model.provide_groundtruth(groundtruth_boxes_list,   #create the labels 
                                       groundtruth_classes_list,
                                       groundtruth_masks_list)
-  prediction_dict = detection_model.predict(images)
+  prediction_dict = detection_model.predict(images) #run the forwad pass this fucntion is in faster_rcnn_meta_arch.py
 
-  losses_dict = detection_model.loss(prediction_dict)
+#IN above function we create the model acording to the output stride 
+
+
+
+
+  losses_dict = detection_model.loss(prediction_dict)  #same place as above    detect the loss .
   for loss_tensor in losses_dict.values():
     tf.losses.add_loss(loss_tensor)
+
+
+#all the functions are in faster_rcnn_meta_arch.py . faster_rcnn_resnet_v1_feature_extrator.py , model.py 
+
+
 
 
 def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
@@ -156,14 +166,14 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
     train_dir: Directory to write checkpoints and training summaries to.
   """
 
-  detection_model = create_model_fn()
+  detection_model = create_model_fn()    #This function can create model and generate losses 
   data_augmentation_options = [
-      preprocessor_builder.build(step)
+      preprocessor_builder.build(step)  #random_horizontal_flip in the faster rcnn config file 
       for step in train_config.data_augmentation_options]
 
-  with tf.Graph().as_default():
+  with tf.Graph().as_default():   #we need a default graph in order to create the model 
     # Build a configuration specifying multi-GPU and multi-replicas.
-    deploy_config = model_deploy.DeploymentConfig(
+    deploy_config = model_deploy.DeploymentConfig(   #object 
         num_clones=num_clones,
         clone_on_cpu=clone_on_cpu,
         replica_id=task,
@@ -172,24 +182,26 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
         worker_job_name=worker_job_name)
 
     # Place the global step on the device storing the variables.
-    with tf.device(deploy_config.variables_device()):
-      global_step = slim.create_global_step()
+    with tf.device(deploy_config.variables_device()):  #suitable device for operation  +++On CPU I think 
+      global_step = slim.create_global_step()  #created the global step tensor 
 
-    with tf.device(deploy_config.inputs_device()):
-      input_queue = _create_input_queue(train_config.batch_size // num_clones,
-                                        create_tensor_dict_fn,
+
+#The following will create an input Que images ,boxes m targets 
+    with tf.device(deploy_config.inputs_device()):  #Device to use to build the inputs ++++on CPU ?? 
+      input_queue = _create_input_queue(train_config.batch_size // num_clones,  #here batch size/number_clones 
+                                        create_tensor_dict_fn,    
                                         train_config.batch_queue_capacity,
                                         train_config.num_batch_queue_threads,
                                         train_config.prefetch_queue_capacity,
-                                        data_augmentation_options)
+                                        data_augmentation_options) #random_horizontal_flip 
 
     # Gather initial summaries.
-    summaries = set(tf.get_collection(tf.GraphKeys.SUMMARIES))
+    summaries = set(tf.get_collection(tf.GraphKeys.SUMMARIES))    #vreate the summeries 
     global_summaries = set([])
 
-    model_fn = functools.partial(_create_losses,
+    model_fn = functools.partial(_create_losses,             #now creating the loss 
                                  create_model_fn=create_model_fn)
-    clones = model_deploy.create_clones(deploy_config, model_fn, [input_queue])
+    clones = model_deploy.create_clones(deploy_config, model_fn, [input_queue])  #creating the clones with respect to t he input model fn 
     first_clone_scope = clones[0].scope
 
     # Gather update_ops from the first clone. These contain, for example,
@@ -197,7 +209,7 @@ def train(create_tensor_dict_fn, create_model_fn, train_config, master, task,
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, first_clone_scope)
 
     with tf.device(deploy_config.optimizer_device()):
-      training_optimizer = optimizer_builder.build(train_config.optimizer,
+      training_optimizer = optimizer_builder.build(train_config.optimizer,  #optimization 
                                                    global_summaries)
 
     sync_optimizer = None

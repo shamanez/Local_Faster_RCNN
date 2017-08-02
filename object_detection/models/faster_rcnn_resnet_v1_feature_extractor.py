@@ -59,10 +59,10 @@ class FasterRCNNResnetV1FeatureExtractor(   #super classs
     """
     if first_stage_features_stride != 8 and first_stage_features_stride != 16:
       raise ValueError('`first_stage_features_stride` must be 8 or 16.')
-    self._architecture = architecture
-    self._resnet_model = resnet_model
+    self._architecture = architecture   #achitecture resnet v1 
+    self._resnet_model = resnet_model  #a fucntion: type of the resnet  EG : resnet_v1.resnet_v1_101
     super(FasterRCNNResnetV1FeatureExtractor, self).__init__(                #initializinf the superclass 
-        is_training, first_stage_features_stride, reuse_weights, weight_decay)
+        is_training, first_stage_features_stride, reuse_weights, weight_decay)    #inintialize the super class to work with RPN use of the model
 
   def preprocess(self, resized_inputs):
     """Faster R-CNN Resnet V1 preprocessing.
@@ -72,17 +72,22 @@ class FasterRCNNResnetV1FeatureExtractor(   #super classs
 
     Args:
       resized_inputs: A [batch, height_in, width_in, channels] float32 tensor
-        representing a batch of images with values between 0 and 255.0.
+        representing a batch of images witConvolutionalBoxPredictorh values between 0 and 255.0.
 
     Returns:
       preprocessed_inputs: A [batch, height_out, width_out, channels] float32
         tensor representing a batch of images.
 
+
+
+The input images should be zero-centered by mean pixel (rather than mean image) subtraction. Namely, the following BGR values should be subtracted: [103.939, 116.779, 123.68].
+
+
     """
-    channel_means = [123.68, 116.779, 103.939]
+    channel_means = [123.68, 116.779, 103.939]                #we just subtract the channel means 
     return resized_inputs - [[channel_means]]
 
-  def _extract_proposal_features(self, preprocessed_inputs, scope):
+  def _extract_proposal_features(self, preprocessed_inputs, scope):   #this function is to extract the proposal features . feature map 
     """Extracts first stage RPN features.
 
     Args:
@@ -102,7 +107,7 @@ class FasterRCNNResnetV1FeatureExtractor(   #super classs
                        'tensor of shape %s' % preprocessed_inputs.get_shape())
     shape_assert = tf.Assert(
         tf.logical_and(
-            tf.greater_equal(tf.shape(preprocessed_inputs)[1], 33),
+            tf.greater_equal(tf.shape(preprocessed_inputs)[1], 33), #can't get spatial size of the input less tht 33
             tf.greater_equal(tf.shape(preprocessed_inputs)[2], 33)),
         ['image size must at least be 33 in both height and width.'])
 
@@ -126,7 +131,7 @@ class FasterRCNNResnetV1FeatureExtractor(   #super classs
               scope=var_scope)
 
     handle = scope + '/%s/block3' % self._architecture
-    return activations[handle]
+    return activations[handle] #get the activations 
 
   def _extract_box_classifier_features(self, proposal_feature_maps, scope):
     """Extracts second stage box classifier features.
@@ -186,7 +191,7 @@ class FasterRCNNResnet50FeatureExtractor(FasterRCNNResnetV1FeatureExtractor):
         first_stage_features_stride, reuse_weights, weight_decay)
 
 
-class FasterRCNNResnet101FeatureExtractor(FasterRCNNResnetV1FeatureExtractor):
+class FasterRCNNResnet101FeatureExtractor(FasterRCNNResnetV1FeatureExtractor):  #
   """Faster R-CNN Resnet 101 feature extractor implementation."""
 
   def __init__(self,
@@ -198,7 +203,7 @@ class FasterRCNNResnet101FeatureExtractor(FasterRCNNResnetV1FeatureExtractor):
 
     Args:
       is_training: See base class.
-      first_stage_features_stride: See base class.
+      first_stage_features_stride: See base class. #what is the depth of the network
       reuse_weights: See base class.
       weight_decay: See base class.
 

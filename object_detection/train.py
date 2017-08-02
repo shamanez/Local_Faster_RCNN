@@ -140,19 +140,24 @@ def get_configs_from_multiple_files():
 def main(_):
   assert FLAGS.train_dir, '`train_dir` is missing.'
   if FLAGS.pipeline_config_path:
-    model_config, train_config, input_config = get_configs_from_pipeline_file() #I think we use this function cz we supply a config file 
+    model_config, train_config, input_config = get_configs_from_pipeline_file() #we use this function cz we supply a config file 
   else:
     model_config, train_config, input_config = get_configs_from_multiple_files()
 
 #Here the funct tool will make the build function with some parameters alread filled in . Kind of sub function of the original
   model_fn = functools.partial(    #create the model with the parameters provided by the config file and 
       model_builder.build,
-      model_config=model_config,
+      model_config=model_config,   
       is_training=True)
 
-  create_input_dict_fn = functools.partial(
+#Now it's time to create the input pipeline or place holders 
+
+  create_input_dict_fn = functools.partial(         #Now creating the input feed 
       input_reader_builder.build, input_config)
 
+
+##################################################################################################################################
+#regarding the distributed training set up 
   env = json.loads(os.environ.get('TF_CONFIG', '{}'))
   cluster_data = env.get('cluster', None)
   cluster = tf.train.ClusterSpec(cluster_data) if cluster_data else None
@@ -190,7 +195,10 @@ def main(_):
     is_chief = (task_info.type == 'master')
     master = server.target
 
-  trainer.train(create_input_dict_fn, model_fn, train_config, master, task,
+#end of the distributed training thing 
+#############################################################################################################################################
+
+  trainer.train(create_input_dict_fn, model_fn, train_config, master, task,     #call a function inorder to train 
                 FLAGS.num_clones, worker_replicas, FLAGS.clone_on_cpu, ps_tasks,
                 worker_job_name, is_chief, FLAGS.train_dir)
 

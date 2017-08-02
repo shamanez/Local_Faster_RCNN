@@ -191,7 +191,7 @@ class DetectionModel(object):
     """
     pass
 
-  def provide_groundtruth(self,
+  def provide_groundtruth(self,   #help to create the loss in trainer.py long dependnecies 
                           groundtruth_boxes_list,
                           groundtruth_classes_list,
                           groundtruth_masks_list=None,

@@ -29,7 +29,7 @@ dynamically at generation time.  The number of anchors to place at each location
 is static --- implementations of AnchorGenerator must always be able return
 the number of anchors that it uses per location for each feature map.
 """
-from abc import ABCMeta
+from abc import ABCMeta        #Register subclass as a “virtual subclass” of this ABC. For example
 from abc import abstractmethod
 
 import tensorflow as tf
@@ -94,7 +94,7 @@ class AnchorGenerator(object):
         of NumAnchorsPerLocation.
     """
     if self.check_num_anchors and (
-        len(feature_map_shape_list) != len(self.num_anchors_per_location())):
+        len(feature_map_shape_list) != len(self.num_anchors_per_location())): #for each featuremap there should similar number of anhc. for a loca.
       raise ValueError('Number of feature maps is expected to equal the length '
                        'of `num_anchors_per_location`.')
     with tf.name_scope(self.name_scope()):
